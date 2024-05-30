@@ -5,11 +5,13 @@
 #' @param center        A logical. TRUE returns center position of needle_image.
 #' @param exact         A logical. Check matching exactly or not.
 #' @param timeout       A numeric for timeout seconds.
+#' @param corner        A string to specify a corner of the display. 
+#'                      "top_left", "top_right", "bottom_left", or "bottom_right".
+#' @param width,height  A integer to specify width or height of the corner.
 #' @param bin_dir       A string for directory name of screenshot.exe on Win.
 #' @return        A numeric pair of xy location.
 #' @examples
-#' if(interactive()){
-#' 
+#' \dontrun{
 #' sc <- screenshot()
 #' if(sc != ""){
 #'   sc_image <- imager::load.image(sc)
@@ -25,13 +27,16 @@
 #'   plot(sc_image)
 #'   plot(needle)
 #'   plot(found)
+#'   # usse `coner` to limit searching field
+#'   # `coner` can be used in Windows
+#'   pos <- locate_image(needle, corner = "bottom_left", center = FALSE)
 #' }
-#' 
 #' }
 #' 
 #' @export
 locate_image <- function(needle_image, 
                          center = TRUE, exact = TRUE, timeout = 5,
+                         corner = NULL, width = 600, height = 300,
                          bin_dir = ""){
   if(is.character(needle_image)){
     needle_image <- imager::load.image(needle_image)
@@ -45,12 +50,22 @@ locate_image <- function(needle_image,
     return(c(0,0))
   }
   haystack_image <- imager::load.image(sc)
+  scale <- 
+    dim(haystack_image)[1] / display_size()$width |>
+    round(2)
+  if(!is.null(corner)){
+    corner <- display_corner(corner, width, height) * scale
+    haystack_image <- hay2needle(haystack_image, 
+                                 corner[1], corner[2], corner[3], corner[4])
+  }else{
+    corner <- c(0,0,0,0)
+  }
   ndl_mt <- image2gray_matrix(needle_image)
   hay_mt <- image2gray_matrix(haystack_image)
-  pos <- locate_ndl_in_hay(ndl_mt, hay_mt, exact, timeout)
+  pos <- (locate_ndl_in_hay(ndl_mt, hay_mt, exact, timeout) + corner[1:2]) / scale
   if(center){
-    return(c(pos[1] + imager::width(needle_image)/2  %>% floor(),
-             pos[2] + imager::height(needle_image)/2 %>% floor() ))
+    return(c(pos[1] + imager::width(needle_image)/2  |> floor(),
+             pos[2] + imager::height(needle_image)/2 |> floor() ))
   }
   return(pos)
 }
@@ -65,8 +80,8 @@ locate_image <- function(needle_image,
 #' @export
 image2gray_matrix <- function(img){
   img <- 
-    img %>%
-    imager::rm.alpha() %>%
+    img |>
+    imager::rm.alpha() |>
     imager::grayscale()
   return(img[,,1,1])
 }
@@ -142,9 +157,9 @@ locate_ndl_in_hay <- function(ndl_mt, hay_mt,
 #' @param base_xy        A numeric pair of xy location.
 #' @return         A logical.
 is_all_same <- function(ndl_mt, hay_mt, base_xy){
-  rows <- (base_xy[[1]][1] + 1):(base_xy[[1]][1] + nrow(ndl_mt))
-  cols <- (base_xy[[1]][2] + 1):(base_xy[[1]][2] + ncol(ndl_mt))
-  diff <- sum(ndl_mt != hay_mt[rows, cols])
+  rows <- (base_xy[[1]][1] + 1):(base_xy[[1]][1] + nrow(ndl_mt) - 1) # -1: avoid error in locating edge images
+  cols <- (base_xy[[1]][2] + 1):(base_xy[[1]][2] + ncol(ndl_mt) - 1)
+  diff <- sum(ndl_mt[seq(rows), seq(cols)] != hay_mt[rows, cols])    # seq(rows), seq(cols): set same size of matrix
   if(diff == 0){
     return(TRUE)
   }
@@ -183,7 +198,7 @@ index2xy <- function(index, nrow){
 #' 
 #' @export
 xy_pos <- function(mt, val){
-  which(mt == val) %>%
+  which(mt == val) |>
     purrr::map(index2xy, nrow(mt))
 }
 
@@ -202,7 +217,7 @@ xy_pos <- function(mt, val){
 compare_table <- function(ndl_mt, hay_mt){
   ndl <- count_val_freq(ndl_mt, "ndl")
   hay <- count_val_freq(hay_mt, "hay")
-  dplyr::left_join(ndl, hay) %>%
+  dplyr::left_join(ndl, hay) |>
     dplyr::arrange(hay, ndl)
 }
 
@@ -218,9 +233,9 @@ compare_table <- function(ndl_mt, hay_mt){
 #' @export
 count_val_freq <- function(mt, colname){
   val <- "val"
-  tibble::tibble({{val}} := as.numeric(mt)) %>%
-    dplyr::group_by(.data[[val]]) %>%
-    dplyr::summarise({{colname}} := dplyr::n())
+  tibble::tibble({{ val }} := as.numeric(mt)) |>
+    dplyr::group_by(dplyr::pick({{ val }})) |>
+    dplyr::summarise({{ colname }} := dplyr::n())
 }
 
 #' Cut off a part of image from a whole image. 

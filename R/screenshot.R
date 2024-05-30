@@ -20,7 +20,7 @@
 #' @export
 screenshot <- function(bin_dir = "", file = ""){
   if(!screenshot_exists(bin_dir)){
-    message("screenshot exec file NOT found")
+    message("NOT found screenshot exec file")
     return("")
   }
   if(file == ""){
@@ -87,8 +87,8 @@ install_screenshot <- function(bin_dir = ""){
   bat <- "screenshot.bat"
   exe <- "screenshot.exe"
   suppressWarnings({
-    paste0(url, bat) %>%
-      readLines() %>%
+    paste0(url, bat) |>
+      readLines() |>
       writeLines(paste0(bat))
   })
   # compile

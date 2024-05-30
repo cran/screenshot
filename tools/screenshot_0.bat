@@ -33,9 +33,6 @@ using System.Drawing.Imaging;
 using System.Collections.Generic;
 using Microsoft.VisualBasic;
 
-using System.Windows;
-using System.Windows.Forms;   // also requires a reference to this assembly
-using System.Threading;
 
 /// Provides functions to capture the entire screen, or a particular window, and save it to a file. 
 
@@ -96,33 +93,8 @@ public class ScreenCapture
 
     public void CaptureScreenToFile(string filename, ImageFormat format)
     {
-        //Image img = CaptureScreen();
-        //img.Save(filename, format);
-        
-        // Create a new thread for demonstration purposes.
-        Thread thread = new Thread(() =>
-        {
-            // Determine the size of the "virtual screen", which includes all monitors.
-            int screenLeft   = SystemInformation.VirtualScreen.Left;
-            int screenTop    = SystemInformation.VirtualScreen.Top;
-            int screenWidth  = SystemInformation.VirtualScreen.Width;
-            int screenHeight = SystemInformation.VirtualScreen.Height;
-
-            // Create a bitmap of the appropriate size to receive the screenshot.
-            using (Bitmap bmp = new Bitmap(screenWidth, screenHeight))
-            {
-                // Draw the screenshot into our bitmap.
-                using (Graphics g = Graphics.FromImage(bmp))
-                {
-                    g.CopyFromScreen(screenLeft, screenTop, 0, 0, bmp.Size);
-                }
-
-                // Do something with the Bitmap here, like save it to a file:
-                bmp.Save(filename, format);
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
+        Image img = CaptureScreen();
+        img.Save(filename, format);
     }
 
     static bool fullscreen = true;
